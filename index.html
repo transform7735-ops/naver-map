@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<!-- saved from url=(0046)file:///C:/Users/S.J.KO/Downloads/index_2.html -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네이버 지도 대시보드</title>
+
+    <!-- ★ 아래 YOUR_CLIENT_ID를 네이버 클라우드 플랫폼에서 발급받은 Client ID로 교체하세요 -->
+    <script src="./index_files/maps.js.다운로드"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com/">
+    <link href="./index_files/css2" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0f1923;
+            --bg-card: #1a2634;
+            --bg-card-hover: #223344;
+            --accent: #00d4aa;
+            --accent-dim: #00d4aa33;
+            --text-primary: #e8edf2;
+            --text-secondary: #8899aa;
+            --border: #2a3a4a;
+            --danger: #ff6b6b;
+            --warning: #ffd93d;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── 헤더 ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            background: linear-gradient(135deg, #0f1923 0%, #1a2634 100%);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            z-index: 100;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header h1 .dot {
+            width: 10px; height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .header-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        /* ── 레이아웃 ── */
+        .layout {
+            display: flex;
+            height: calc(100vh - 61px);
+        }
+
+        /* ── 사이드바 ── */
+        .sidebar {
+            width: 340px;
+            min-width: 340px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sidebar-header {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sidebar-header h2 {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+        .search-box {
+            display: flex;
+            gap: 8px;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-box input:focus { border-color: var(--accent); }
+        .search-box input::placeholder { color: var(--text-secondary); }
+
+        .btn {
+            padding: 10px 16px;
+            background: var(--accent);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-danger { background: var(--danger); }
+
+        .marker-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        .marker-list::-webkit-scrollbar { width: 4px; }
+        .marker-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .marker-card {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .marker-card:hover {
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+            transform: translateX(4px);
+        }
+        .marker-card .name {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .marker-card .coords {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+        .marker-card .category-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+        .marker-card .delete-btn {
+            position: absolute;
+            top: 10px; right: 10px;
+            width: 24px; height: 24px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            opacity: 0;
+        }
+        .marker-card:hover .delete-btn { opacity: 1; }
+        .marker-card .delete-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .sidebar-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+
+        /* ── 지도 ── */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        #map { width: 100%; height: 100%; }
+
+        /* ── 지도 위 안내 ── */
+        .map-instructions {
+            position: absolute;
+            top: 16px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            z-index: 10;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            white-space: nowrap;
+        }
+        .map-instructions kbd {
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* ── 모달 ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px;
+            width: 380px;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal h3 {
+            font-size: 16px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .modal label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+            margin-top: 14px;
+        }
+        .modal label:first-of-type { margin-top: 0; }
+        .modal input, .modal select, .modal textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .modal input:focus, .modal select:focus, .modal textarea:focus {
+            border-color: var(--accent);
+        }
+        .modal textarea { resize: vertical; min-height: 60px; }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 22px;
+            justify-content: flex-end;
+        }
+
+        /* ── 카테고리 색상 ── */
+        .cat-office    { background: #1a3a5c; color: #5b9bd5; }
+        .cat-client    { background: #3a1a3a; color: #c77dba; }
+        .cat-infra     { background: #1a3a2a; color: #70c794; }
+        .cat-etc       { background: #3a3a1a; color: #d4c85b; }
+
+        /* ── 통계바 ── */
+        .stats-bar {
+            display: flex;
+            gap: 0;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .stat-item {
+            flex: 1;
+            padding: 14px 0;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+        .stat-item:last-child { border-right: none; }
+        .stat-item .num {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--accent);
+        }
+        .stat-item .label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        /* ── 반응형 ── */
+        @media (max-width: 768px) {
+            .layout { flex-direction: column-reverse; }
+            .sidebar { width: 100%; min-width: auto; height: 45vh; }
+            .map-container { height: 55vh; }
+            .map-instructions { font-size: 11px; padding: 8px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1><span class="dot"></span> 네이버 지도 대시보드</h1>
+    <span class="header-meta" id="datetime">2026년 5월 2일 토요일 오전 10:19</span>
+</div>
+
+<div class="layout">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>📍 마커 목록</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="마커 검색..." oninput="filterMarkers()">
+                <button class="btn btn-sm" onclick="openAddModal()">+ 추가</button>
+            </div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="num" id="totalCount">5</div>
+                <div class="label">전체</div>
+            </div>
+            <div class="stat-item">
+                <div class="num" id="officeCount">1</div>
+                <div class="label">사무소</div>
+            </div>
+            <div class="stat-item">
+                <div class="num" id="clientCount">2</div>
+                <div class="label">고객사</div>
+            </div>
+            <div class="stat-item">
+                <div class="num" id="infraCount">2</div>
+                <div class="label">시설물</div>
+            </div>
+        </div>
+
+        <div class="marker-list" id="markerList">
+                <div class="marker-card" onclick="focusMarker(1777684544544)">
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteMarker(1777684544544)">✕</button>
+                    <div class="name">서울시청</div>
+                    <div class="coords">37.5666, 126.9784 · 본사 소재지</div>
+                    <span class="category-tag cat-office">사무소</span>
+                </div>
+                <div class="marker-card" onclick="focusMarker(1777684544545)">
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteMarker(1777684544545)">✕</button>
+                    <div class="name">광화문광장</div>
+                    <div class="coords">37.5723, 126.9769 · 주요 시설물</div>
+                    <span class="category-tag cat-infra">시설물</span>
+                </div>
+                <div class="marker-card" onclick="focusMarker(1777684544546)">
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteMarker(1777684544546)">✕</button>
+                    <div class="name">남산타워</div>
+                    <div class="coords">37.5512, 126.9882 · 관광 거점</div>
+                    <span class="category-tag cat-client">고객사</span>
+                </div>
+                <div class="marker-card" onclick="focusMarker(1777684544547)">
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteMarker(1777684544547)">✕</button>
+                    <div class="name">여의도공원</div>
+                    <div class="coords">37.5286, 126.9340 · 공원 시설</div>
+                    <span class="category-tag cat-infra">시설물</span>
+                </div>
+                <div class="marker-card" onclick="focusMarker(1777684544548)">
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteMarker(1777684544548)">✕</button>
+                    <div class="name">강남역</div>
+                    <div class="coords">37.4979, 127.0276 · 교통 허브</div>
+                    <span class="category-tag cat-client">고객사</span>
+                </div></div>
+
+        <div class="sidebar-footer">
+            <button class="btn btn-outline btn-sm" onclick="exportData()" style="flex:1;">📥 내보내기 (JSON)</button>
+            <label class="btn btn-outline btn-sm" style="flex:1; text-align:center; cursor:pointer;">
+                📤 불러오기
+                <input type="file" accept=".json" onchange="importData(event)" style="display:none;">
+            </label>
+        </div>
+    </div>
+
+    <div class="map-container">
+        <div class="map-instructions">
+            지도를 <kbd>클릭</kbd>하면 해당 위치에 마커를 추가할 수 있습니다
+        </div>
+        <div id="map" tabindex="0" style="position: relative; overflow: hidden; background: url(&quot;https://ssl.pstatic.net/static/maps/mantle/2x/auth_fail.png&quot;) center center / 256px 256px rgb(248, 249, 250);"></div>
+    </div>
+</div>
+
+<!-- 마커 추가 모달 -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal">
+        <h3>📌 새 마커 추가</h3>
+        <label>이름</label>
+        <input type="text" id="markerName" placeholder="예: 서울 본사">
+        <label>카테고리</label>
+        <select id="markerCategory">
+            <option value="office">🏢 사무소</option>
+            <option value="client">🤝 고객사</option>
+            <option value="infra">🔧 시설물</option>
+            <option value="etc">📎 기타</option>
+        </select>
+        <label>메모</label>
+        <textarea id="markerMemo" placeholder="간단한 메모를 입력하세요"></textarea>
+        <label>위도</label>
+        <input type="text" id="markerLat" readonly="">
+        <label>경도</label>
+        <input type="text" id="markerLng" readonly="">
+        <div class="modal-actions">
+            <button class="btn btn-outline btn-sm" onclick="closeAddModal()">취소</button>
+            <button class="btn btn-sm" onclick="saveMarker()">저장</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ─── 데이터 ───
+    let markers = [];
+    let naverMarkers = [];
+    let map;
+
+    // ─── 샘플 데이터 (원하는 대로 수정하세요) ───
+    const sampleData = [
+        { name: '서울시청', lat: 37.5666, lng: 126.9784, category: 'office', memo: '본사 소재지' },
+        { name: '광화문광장', lat: 37.5723, lng: 126.9769, category: 'infra', memo: '주요 시설물' },
+        { name: '남산타워', lat: 37.5512, lng: 126.9882, category: 'client', memo: '관광 거점' },
+        { name: '여의도공원', lat: 37.5286, lng: 126.9340, category: 'infra', memo: '공원 시설' },
+        { name: '강남역', lat: 37.4979, lng: 127.0276, category: 'client', memo: '교통 허브' },
+    ];
+
+    // ─── 초기화 ───
+    function init() {
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
+
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.5666, 126.9784),
+            zoom: 13,
+            mapTypeControl: true,
+            zoomControl: true,
+            zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+        });
+
+        // 지도 클릭 → 마커 추가
+        naver.maps.Event.addListener(map, 'click', function(e) {
+            document.getElementById('markerLat').value = e.coord.lat().toFixed(6);
+            document.getElementById('markerLng').value = e.coord.lng().toFixed(6);
+            openAddModal();
+        });
+
+        // 저장된 데이터 로드 또는 샘플 데이터 사용
+        const saved = localStorage.getItem('naver_map_markers');
+        if (saved) {
+            markers = JSON.parse(saved);
+        } else {
+            markers = sampleData.map((d, i) => ({ ...d, id: Date.now() + i }));
+        }
+
+        renderAll();
+    }
+
+    function updateDateTime() {
+        const now = new Date();
+        const opts = { year:'numeric', month:'long', day:'numeric', weekday:'long', hour:'2-digit', minute:'2-digit' };
+        document.getElementById('datetime').textContent = now.toLocaleDateString('ko-KR', opts);
+    }
+
+    // ─── 렌더링 ───
+    function renderAll() {
+        renderMarkerList();
+        renderMapMarkers();
+        updateStats();
+        saveToLocal();
+    }
+
+    function renderMarkerList(filter = '') {
+        const list = document.getElementById('markerList');
+        const filtered = markers.filter(m =>
+            m.name.toLowerCase().includes(filter.toLowerCase()) ||
+            m.memo.toLowerCase().includes(filter.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">🗺️</div>
+                    ${filter ? '검색 결과가 없습니다' : '마커가 없습니다<br>지도를 클릭하여 추가해보세요'}
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = filtered.map(m => {
+            const catClass = `cat-${m.category}`;
+            const catLabel = { office:'사무소', client:'고객사', infra:'시설물', etc:'기타' }[m.category];
+            return `
+                <div class="marker-card" onclick="focusMarker(${m.id})">
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteMarker(${m.id})">✕</button>
+                    <div class="name">${m.name}</div>
+                    <div class="coords">${m.lat.toFixed(4)}, ${m.lng.toFixed(4)}${m.memo ? ' · ' + m.memo : ''}</div>
+                    <span class="category-tag ${catClass}">${catLabel}</span>
+                </div>`;
+        }).join('');
+    }
+
+    function renderMapMarkers() {
+        // 기존 마커 제거
+        naverMarkers.forEach(nm => nm.setMap(null));
+        naverMarkers = [];
+
+        const colors = { office:'#5b9bd5', client:'#c77dba', infra:'#70c794', etc:'#d4c85b' };
+        const icons  = { office:'🏢', client:'🤝', infra:'🔧', etc:'📎' };
+
+        markers.forEach(m => {
+            const marker = new naver.maps.Marker({
+                position: new naver.maps.LatLng(m.lat, m.lng),
+                map: map,
+                icon: {
+                    content: `<div style="
+                        background:${colors[m.category]};
+                        color:#fff;
+                        padding:6px 10px;
+                        border-radius:8px;
+                        font-size:12px;
+                        font-weight:700;
+                        font-family:'Noto Sans KR',sans-serif;
+                        box-shadow:0 2px 8px rgba(0,0,0,0.3);
+                        white-space:nowrap;
+                        border:2px solid #fff;
+                    ">${icons[m.category]} ${m.name}</div>`,
+                    anchor: new naver.maps.Point(15, 15)
+                }
+            });
+
+            const infoWindow = new naver.maps.InfoWindow({
+                content: `<div style="padding:14px 18px;font-family:'Noto Sans KR',sans-serif;min-width:180px;">
+                    <strong style="font-size:15px;">${m.name}</strong>
+                    <p style="margin:6px 0 0;color:#666;font-size:12px;">${m.memo || '메모 없음'}</p>
+                    <p style="margin:4px 0 0;color:#999;font-size:11px;">📍 ${m.lat.toFixed(6)}, ${m.lng.toFixed(6)}</p>
+                </div>`,
+                borderColor: colors[m.category],
+                borderWidth: 2
+            });
+
+            naver.maps.Event.addListener(marker, 'click', () => {
+                infoWindow.open(map, marker);
+            });
+
+            marker._id = m.id;
+            naverMarkers.push(marker);
+        });
+    }
+
+    function updateStats() {
+        document.getElementById('totalCount').textContent = markers.length;
+        document.getElementById('officeCount').textContent = markers.filter(m => m.category === 'office').length;
+        document.getElementById('clientCount').textContent = markers.filter(m => m.category === 'client').length;
+        document.getElementById('infraCount').textContent = markers.filter(m => m.category === 'infra').length;
+    }
+
+    // ─── 마커 조작 ───
+    function focusMarker(id) {
+        const m = markers.find(x => x.id === id);
+        if (m) {
+            map.setCenter(new naver.maps.LatLng(m.lat, m.lng));
+            map.setZoom(16);
+            // 해당 마커의 InfoWindow 열기
+            const nm = naverMarkers.find(x => x._id === id);
+            if (nm) naver.maps.Event.trigger(nm, 'click');
+        }
+    }
+
+    function deleteMarker(id) {
+        markers = markers.filter(x => x.id !== id);
+        renderAll();
+    }
+
+    function openAddModal() {
+        document.getElementById('addModal').classList.add('active');
+        document.getElementById('markerName').focus();
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('active');
+        document.getElementById('markerName').value = '';
+        document.getElementById('markerMemo').value = '';
+    }
+
+    function saveMarker() {
+        const name = document.getElementById('markerName').value.trim();
+        const lat = parseFloat(document.getElementById('markerLat').value);
+        const lng = parseFloat(document.getElementById('markerLng').value);
+        const category = document.getElementById('markerCategory').value;
+        const memo = document.getElementById('markerMemo').value.trim();
+
+        if (!name) { alert('이름을 입력해주세요.'); return; }
+        if (isNaN(lat) || isNaN(lng)) { alert('지도를 클릭하여 위치를 지정해주세요.'); return; }
+
+        markers.push({ id: Date.now(), name, lat, lng, category, memo });
+        closeAddModal();
+        renderAll();
+        focusMarker(markers[markers.length - 1].id);
+    }
+
+    function filterMarkers() {
+        const q = document.getElementById('searchInput').value;
+        renderMarkerList(q);
+    }
+
+    // ─── 데이터 저장 / 불러오기 ───
+    function saveToLocal() {
+        localStorage.setItem('naver_map_markers', JSON.stringify(markers));
+    }
+
+    function exportData() {
+        const blob = new Blob([JSON.stringify(markers, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'map_markers_' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (Array.isArray(data)) {
+                    markers = data;
+                    renderAll();
+                    // 전체 마커가 보이도록 범위 조정
+                    if (markers.length > 0) {
+                        const bounds = new naver.maps.LatLngBounds();
+                        markers.forEach(m => bounds.extend(new naver.maps.LatLng(m.lat, m.lng)));
+                        map.fitBounds(bounds);
+                    }
+                    alert(`${markers.length}개 마커를 불러왔습니다.`);
+                }
+            } catch { alert('올바른 JSON 파일이 아닙니다.'); }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    // ─── 시작 ───
+    window.onload = init;
+</script>
+
+
+
+</body></html>
