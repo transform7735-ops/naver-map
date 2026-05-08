@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>엑셀 주소 지도 대시보드</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0f1923;
+            --bg-card: #1a2634;
+            --bg-card-hover: #223344;
+            --accent: #00d4aa;
+            --accent-dim: #00d4aa33;
+            --text-primary: #e8edf2;
+            --text-secondary: #8899aa;
+            --border: #2a3a4a;
+            --danger: #ff6b6b;
+            --warning: #ffd93d;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #0f1923 0%, #1a2634 100%);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            z-index: 100;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+        .header h1 {
+            font-size: 18px; font-weight: 900; letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .header h1 .dot {
+            width: 10px; height: 10px; background: var(--accent);
+            border-radius: 50%; box-shadow: 0 0 12px var(--accent);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .header-right { display: flex; align-items: center; gap: 14px; }
+        .header-meta { font-size: 12px; color: var(--text-secondary); font-weight: 300; }
+        .api-status {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 11px; padding: 4px 10px; border-radius: 6px;
+            border: 1px solid var(--border); cursor: pointer; transition: all 0.2s;
+        }
+        .api-status:hover { border-color: var(--accent); }
+        .api-status .status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--accent); box-shadow: 0 0 6px var(--accent);
+        }
+
+        /* API Key Screen */
+        .api-screen {
+            position: fixed; inset: 0; background: var(--bg-dark);
+            z-index: 9999; display: flex; justify-content: center; align-items: center;
+        }
+        .api-screen.hidden { display: none; }
+        .api-box {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 44px 40px; width: 460px; max-width: 92vw;
+            text-align: center; box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+            position: relative; overflow: hidden;
+        }
+        .api-box::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--accent), #5b9bd5, var(--accent));
+        }
+        .api-box .logo { font-size: 48px; margin-bottom: 8px; }
+        .api-box h2 { font-size: 20px; font-weight: 900; margin-bottom: 6px; }
+        .api-box .subtitle { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 24px; }
+        .api-box .input-group { display: flex; gap: 8px; margin-bottom: 14px; }
+        .api-box input[type="text"] {
+            flex: 1; padding: 13px 16px; background: var(--bg-dark);
+            border: 2px solid var(--border); border-radius: 12px;
+            color: var(--text-primary); font-family: inherit; font-size: 14px;
+            outline: none; transition: border-color 0.2s;
+        }
+        .api-box input[type="text"]:focus { border-color: var(--accent); }
+        .api-box input[type="text"]::placeholder { color: var(--text-secondary); }
+        .connect-btn {
+            padding: 13px 24px; background: var(--accent); color: var(--bg-dark);
+            border: none; border-radius: 12px; font-family: inherit; font-size: 14px;
+            font-weight: 900; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .connect-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .connect-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .remember-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;
+        }
+        .remember-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+        .remember-row label { cursor: pointer; }
+        .help-text {
+            font-size: 12px; color: var(--text-secondary); line-height: 1.8;
+            background: var(--bg-dark); border-radius: 10px; padding: 14px 16px; text-align: left;
+        }
+        .help-text a { color: var(--accent); text-decoration: none; }
+        .help-text a:hover { text-decoration: underline; }
+        .help-text strong { color: var(--text-primary); }
+        .api-error { color: var(--danger); font-size: 12px; margin-bottom: 12px; display: none; }
+        .api-error.show { display: block; }
+
+        /* Layout */
+        .layout { display: flex; height: calc(100vh - 57px); }
+
+        /* Sidebar */
+        .sidebar {
+            width: 370px; min-width: 370px; background: var(--bg-card);
+            border-right: 1px solid var(--border); display: flex;
+            flex-direction: column; overflow: hidden;
+        }
+        .sidebar-header { padding: 16px 18px 12px; border-bottom: 1px solid var(--border); }
+        .sidebar-header h2 {
+            font-size: 13px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1.5px; color: var(--accent); margin-bottom: 10px;
+        }
+
+        /* Upload */
+        .upload-area { margin-bottom: 10px; }
+        .upload-drop {
+            display: block;
+            border: 2px dashed var(--border); border-radius: 10px;
+            padding: 16px 14px; text-align: center; cursor: pointer;
+            transition: all 0.2s; position: relative;
+        }
+        .upload-drop:hover, .upload-drop.dragover {
+            border-color: var(--accent); background: var(--accent-dim);
+        }
+        .upload-drop .icon { font-size: 24px; margin-bottom: 4px; }
+        .upload-drop .text { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+        .upload-drop .text strong { color: var(--text-primary); }
+        .upload-drop .mobile-hint {
+            display: none; font-size: 11px; color: var(--accent); margin-top: 6px;
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .upload-drop .mobile-hint { display: block; }
+        }
+        .upload-drop input[type="file"] {
+            position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+        }
+
+        .file-info {
+            display: none; align-items: center; gap: 10px;
+            padding: 8px 12px; background: var(--bg-dark); border-radius: 8px; margin-top: 8px;
+        }
+        .file-info.show { display: flex; }
+        .file-info .file-name { flex: 1; font-size: 12px; font-weight: 500; }
+        .file-info .clear-btn {
+            background: none; border: none; color: var(--text-secondary);
+            cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .file-info .clear-btn:hover { color: var(--danger); background: rgba(255,107,107,0.15); }
+
+        /* Detected column badge */
+        .col-detect {
+            display: none;
+            font-size: 11px; padding: 6px 10px;
+            background: var(--accent-dim); border: 1px solid rgba(0,212,170,0.3);
+            border-radius: 7px; color: var(--text-secondary);
+            margin-bottom: 8px; line-height: 1.5;
+        }
+        .col-detect.show { display: block; }
+        .col-detect strong { color: var(--accent); }
+
+        /* Geocoding progress */
+        .geocode-wrap {
+            display: none; padding: 10px 18px 12px; border-bottom: 1px solid var(--border);
+        }
+        .geocode-wrap.show { display: block; }
+        .geocode-label {
+            font-size: 11px; color: var(--text-secondary);
+            margin-bottom: 5px; display: flex; justify-content: space-between;
+        }
+        .geocode-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+        .geocode-bar-fill {
+            height: 100%; background: var(--accent); border-radius: 3px;
+            transition: width 0.3s ease; width: 0%;
+        }
+
+        /* Search */
+        .search-box { display: flex; gap: 8px; }
+        .search-box input {
+            flex: 1; padding: 9px 12px; background: var(--bg-dark);
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text-primary); font-family: inherit; font-size: 12px;
+            outline: none; transition: border-color 0.2s;
+        }
+        .search-box input:focus { border-color: var(--accent); }
+        .search-box input::placeholder { color: var(--text-secondary); }
+
+        /* Stats */
+        .stats-bar { display: flex; padding: 0 18px; border-bottom: 1px solid var(--border); }
+        .stat-item {
+            flex: 1; padding: 12px 0; text-align: center;
+            border-right: 1px solid var(--border);
+        }
+        .stat-item:last-child { border-right: none; }
+        .stat-item .num { font-size: 20px; font-weight: 900; color: var(--accent); }
+        .stat-item .num.err { color: var(--danger); }
+        .stat-item .label {
+            font-size: 9px; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;
+        }
+
+        /* Work list */
+        .work-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .work-list::-webkit-scrollbar { width: 4px; }
+        .work-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .work-card {
+            background: var(--bg-dark); border: 1px solid var(--border);
+            border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .work-card:hover { border-color: var(--accent); background: var(--bg-card-hover); transform: translateX(3px); }
+        .work-card .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .work-card .color-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .work-card .card-id { font-size: 11px; font-weight: 700; color: var(--accent); }
+        .work-card .card-status {
+            margin-left: auto; font-size: 10px; padding: 1px 6px;
+            border-radius: 3px; font-weight: 600;
+        }
+        .s-ok   { background: rgba(0,212,170,0.2); color: var(--accent); }
+        .s-error { background: rgba(255,107,107,0.2); color: var(--danger); }
+        .s-pending { background: rgba(255,217,61,0.2); color: var(--warning); }
+        .work-card .card-addr { font-size: 12px; color: var(--text-secondary); line-height: 1.5; padding-left: 17px; }
+
+        /* Btn */
+        .btn {
+            padding: 9px 14px; background: var(--accent); color: var(--bg-dark);
+            border: none; border-radius: 8px; font-family: inherit; font-size: 12px;
+            font-weight: 700; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-sm { padding: 6px 10px; font-size: 11px; }
+
+        .sidebar-footer { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+
+        .empty-state {
+            text-align: center; padding: 36px 18px;
+            color: var(--text-secondary); font-size: 12px; line-height: 1.8;
+        }
+        .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
+
+        /* Map */
+        .map-container { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+
+        .map-instructions {
+            position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 9px 18px; font-size: 12px;
+            color: var(--text-secondary); z-index: 10; pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4); white-space: nowrap;
+        }
+        .map-instructions kbd {
+            background: var(--accent-dim); color: var(--accent);
+            padding: 2px 6px; border-radius: 4px; font-family: inherit;
+            font-weight: 700; font-size: 11px;
+        }
+
+        @media (max-width: 768px) {
+            .layout { flex-direction: column-reverse; }
+            .sidebar { width: 100%; min-width: auto; height: 50vh; }
+            .map-container { height: 50vh; }
+            .api-box { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- API Key Screen -->
+<div class="api-screen" id="apiScreen">
+    <div class="api-box">
+        <div class="logo">🗺️</div>
+        <h2>엑셀 주소 지도 대시보드</h2>
+        <p class="subtitle">
+            네이버 클라우드 플랫폼의 <strong>Client ID</strong>를 입력하면<br>
+            지도와 주소 변환 기능이 활성화됩니다.
+        </p>
+        <div class="api-error" id="apiError"></div>
+        <div class="input-group">
+            <input type="text" id="apiKeyInput" placeholder="NCP Client ID 입력" autofocus>
+            <button class="connect-btn" id="connectBtn" onclick="connectMap()">연결</button>
+        </div>
+        <div class="remember-row">
+            <input type="checkbox" id="rememberKey" checked>
+            <label for="rememberKey">이 브라우저에 Client ID 저장하기</label>
+        </div>
+        <div class="help-text">
+            <strong>Client ID 발급 방법:</strong><br>
+            1. <a href="https://console.ncloud.com/" target="_blank">console.ncloud.com</a> 접속 → 로그인<br>
+            2. AI·Application Service → Maps → 이용 신청<br>
+            3. Application 등록 → <strong>Web Dynamic Map</strong> 선택<br>
+            4. 서비스 URL에 사용할 주소 등록<br>
+            5. 발급된 <strong>Client ID</strong>를 위에 입력
+        </div>
+    </div>
+</div>
+
+<!-- Main Dashboard -->
+<div class="header">
+    <h1><span class="dot"></span> 엑셀 주소 지도 대시보드</h1>
+    <div class="header-right">
+        <div class="api-status" id="apiStatus" onclick="changeApiKey()" title="클릭하여 API 키 변경">
+            <span class="status-dot"></span>
+            <span id="apiStatusText">API 미연결</span>
+        </div>
+        <span class="header-meta" id="datetime"></span>
+    </div>
+</div>
+
+<div class="layout">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>📁 엑셀 데이터 업로드</h2>
+
+            <div class="upload-area">
+                <label class="upload-drop" id="dropZone">
+                    <div class="icon">📊</div>
+                    <div class="text">
+                        <strong>엑셀 파일을 드래그하거나 클릭</strong>하여 업로드<br>
+                        (.xlsx, .xls, .csv 지원 · 주소 컬럼 자동 감지)
+                    </div>
+                    <div class="mobile-hint">📂 탭 → 원하는 폴더에서 파일 선택</div>
+                    <input type="file" id="excelFile" accept="*/*" onchange="handleFileUpload(event)">
+                </label>
+                <div class="file-info" id="fileInfo">
+                    <span class="file-name" id="fileName"></span>
+                    <button class="clear-btn" onclick="clearData()" title="데이터 초기화">✕</button>
+                </div>
+            </div>
+
+            <!-- 감지된 주소 컬럼 표시 -->
+            <div class="col-detect" id="colDetect">
+                📌 주소 컬럼 감지: <strong id="colName"></strong>
+            </div>
+
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="주소 또는 내용 검색..." oninput="filterWorks()">
+            </div>
+        </div>
+
+        <!-- 지오코딩 진행 바 -->
+        <div class="geocode-wrap" id="geocodeWrap">
+            <div class="geocode-label">
+                <span id="geocodeText">주소 변환 중...</span>
+                <span id="geocodeCount">0 / 0</span>
+            </div>
+            <div class="geocode-bar">
+                <div class="geocode-bar-fill" id="geocodeBarFill"></div>
+            </div>
+        </div>
+
+        <!-- 통계 -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="num" id="totalCount">0</div>
+                <div class="label">전체</div>
+            </div>
+            <div class="stat-item">
+                <div class="num" id="okCount">0</div>
+                <div class="label">지도 표시</div>
+            </div>
+            <div class="stat-item">
+                <div class="num err" id="errCount">0</div>
+                <div class="label">변환 실패</div>
+            </div>
+        </div>
+
+        <!-- 목록 -->
+        <div class="work-list" id="workList">
+            <div class="empty-state">
+                <div class="icon">📋</div>
+                엑셀 파일을 업로드하면<br>주소가 지도에 자동 표시됩니다
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="btn btn-outline btn-sm" onclick="fitAllBounds()" style="flex:1;">🔍 전체 보기</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleLabels()" style="flex:1;" id="labelToggle">🏷️ 라벨 숨기기</button>
+        </div>
+    </div>
+
+    <div class="map-container">
+        <div class="map-instructions" id="mapInstructions">
+            <kbd>엑셀</kbd> 파일을 업로드하면 주소가 자동으로 지도에 표시됩니다
+        </div>
+        <div id="map"></div>
+    </div>
+</div>
+
+<script>
+    // ─── 전역 변수 ───
+    var works = [];
+    var mapMarkers = [];
+    var mapInfoWindows = [];
+    var mapLabels = [];
+    var map;
+    var mapReady = false;
+    var labelsVisible = true;
+    var geocodingInProgress = false;
+    var currentOpenInfo = null;
+
+    var COLORS = [
+        '#4ecdc4','#ff6b6b','#ffd93d','#a29bfe','#fd79a8',
+        '#00b894','#e17055','#6c5ce7','#00cec9','#fab1a0',
+        '#55efc4','#fdcb6e','#74b9ff','#e84393','#26de81'
+    ];
+
+    // 주소 컬럼 감지 키워드 (앞쪽일수록 우선순위 높음)
+    var ADDR_KEYWORDS = [
+        '주소','도로명주소','지번주소','소재지','주소지',
+        '위치','장소','현장주소','현장위치','address','addr'
+    ];
+
+    // ─── 페이지 로드 ───
+    window.onload = function() {
+        updateDateTime();
+        setInterval(updateDateTime, 60000);
+        setupDragDrop();
+
+        var savedKey = localStorage.getItem('naver_map_client_id');
+        if (savedKey) {
+            document.getElementById('apiKeyInput').value = savedKey;
+            connectMap();
+        }
+        document.getElementById('apiKeyInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') connectMap();
+        });
+    };
+
+    // ─── API 연결 ───
+    function connectMap() {
+        var input    = document.getElementById('apiKeyInput');
+        var clientId = input.value.trim();
+        var errorEl  = document.getElementById('apiError');
+        var btn      = document.getElementById('connectBtn');
+
+        if (!clientId) {
+            errorEl.textContent = 'Client ID를 입력해주세요.';
+            errorEl.classList.add('show');
+            input.focus();
+            return;
+        }
+
+        btn.textContent = '연결 중...';
+        btn.disabled = true;
+        errorEl.classList.remove('show');
+
+        if (document.getElementById('rememberKey').checked) {
+            localStorage.setItem('naver_map_client_id', clientId);
+        }
+
+        var script = document.createElement('script');
+        // geocoder 서브모듈: 주소→좌표 변환에 필요
+        script.src = 'https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=' + clientId + '&submodules=geocoder';
+
+        script.onload = function() {
+            document.getElementById('apiScreen').classList.add('hidden');
+            document.getElementById('apiStatusText').textContent = 'API 연결됨 (' + clientId.substring(0,4) + '...)';
+            initMap();
+        };
+        script.onerror = function() {
+            errorEl.textContent = 'API 로드 실패 → Client ID 또는 네트워크를 확인해주세요.';
+            errorEl.classList.add('show');
+            btn.textContent = '연결';
+            btn.disabled = false;
+        };
+        document.head.appendChild(script);
+    }
+
+    function changeApiKey() {
+        if (confirm('API 키를 변경하시겠습니까?\n페이지가 새로고침됩니다.')) {
+            localStorage.removeItem('naver_map_client_id');
+            location.reload();
+        }
+    }
+
+    // ─── 지도 초기화 ───
+    function initMap() {
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.5666, 126.9784),
+            zoom: 12,
+            mapTypeControl: true,
+            zoomControl: true,
+            zoomControlOptions: { position: naver.maps.Position.RIGHT_CENTER }
+        });
+        mapReady = true;
+
+        // 파일이 이미 업로드된 상태라면 지금 지오코딩 시작
+        if (works.length > 0) startGeocoding();
+    }
+
+    function updateDateTime() {
+        var now  = new Date();
+        var opts = { year:'numeric', month:'long', day:'numeric', weekday:'long', hour:'2-digit', minute:'2-digit' };
+        document.getElementById('datetime').textContent = now.toLocaleDateString('ko-KR', opts);
+    }
+
+    // ─── 드래그 앤 드롭 ───
+    function setupDragDrop() {
+        var drop = document.getElementById('dropZone');
+        drop.addEventListener('dragover',  function(e) { e.preventDefault(); drop.classList.add('dragover'); });
+        drop.addEventListener('dragleave', function()  { drop.classList.remove('dragover'); });
+        drop.addEventListener('drop', function(e) {
+            e.preventDefault();
+            drop.classList.remove('dragover');
+            var file = e.dataTransfer.files[0];
+            if (file) processFile(file);
+        });
+    }
+
+    function handleFileUpload(e) {
+        var file = e.target.files[0];
+        if (file) processFile(file);
+    }
+
+    // ─── 파일 처리 ───
+    function processFile(file) {
+        var name = file.name.toLowerCase();
+        if (!name.endsWith('.xlsx') && !name.endsWith('.xls') && !name.endsWith('.csv')) {
+            alert('.xlsx, .xls, .csv 파일만 지원합니다.\n선택한 파일: ' + file.name);
+            document.getElementById('excelFile').value = '';
+            return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var data     = new Uint8Array(e.target.result);
+                var workbook = XLSX.read(data, { type: 'array' });
+                var sheet    = workbook.Sheets[workbook.SheetNames[0]];
+                var json     = XLSX.utils.sheet_to_json(sheet);
+
+                if (json.length === 0) { alert('시트에 데이터가 없습니다.'); return; }
+
+                var headers  = Object.keys(json[0]);
+                var addrCol  = detectAddressColumn(headers);
+
+                if (!addrCol) {
+                    alert(
+                        '주소 컬럼을 찾을 수 없습니다.\n\n' +
+                        '감지된 컬럼: ' + headers.join(', ') + '\n\n' +
+                        '컬럼명을 "주소", "도로명주소", "소재지", "위치" 중 하나로 수정 후 다시 업로드해 주세요.'
+                    );
+                    return;
+                }
+
+                works = [];
+                json.forEach(function(row, i) {
+                    var addr = (row[addrCol] || '').toString().trim();
+                    if (!addr) return;
+                    works.push({
+                        idx:     i,
+                        id:      String(row['번호'] || row['ID'] || row['순번'] || row['No'] || (i + 1)),
+                        address: addr,
+                        allData: row,
+                        lat:     null,
+                        lng:     null,
+                        status:  'pending',
+                        color:   COLORS[i % COLORS.length]
+                    });
+                });
+
+                if (works.length === 0) {
+                    alert('"' + addrCol + '" 컬럼에 유효한 주소가 없습니다.');
+                    return;
+                }
+
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileInfo').classList.add('show');
+                document.getElementById('colName').textContent = addrCol;
+                document.getElementById('colDetect').classList.add('show');
+
+                renderWorkList();
+                updateStats();
+
+                if (mapReady) {
+                    startGeocoding();
+                } else {
+                    document.getElementById('mapInstructions').innerHTML =
+                        '⏳ <kbd>' + works.length + '건</kbd> 로드됨 — API 연결 완료 시 지도 변환이 시작됩니다';
+                }
+
+            } catch (err) {
+                alert('파일 처리 중 오류가 발생했습니다:\n' + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // ─── 주소 컬럼 감지 ───
+    function detectAddressColumn(headers) {
+        // 완전 일치 우선
+        for (var i = 0; i < ADDR_KEYWORDS.length; i++) {
+            for (var j = 0; j < headers.length; j++) {
+                if (headers[j].toString().trim() === ADDR_KEYWORDS[i]) return headers[j];
+            }
+        }
+        // 포함 일치
+        for (var j = 0; j < headers.length; j++) {
+            var h = headers[j].toString().trim().toLowerCase();
+            for (var i = 0; i < ADDR_KEYWORDS.length; i++) {
+                if (h.indexOf(ADDR_KEYWORDS[i].toLowerCase()) !== -1) return headers[j];
+            }
+        }
+        return null;
+    }
+
+    // ─── 지오코딩 ───
+    function startGeocoding() {
+        if (geocodingInProgress) return;
+        geocodingInProgress = true;
+        clearMapElements();
+        document.getElementById('geocodeWrap').classList.add('show');
+        updateProgress();
+        geocodeNext(0);
+    }
+
+    function geocodeNext(index) {
+        if (index >= works.length) {
+            geocodingInProgress = false;
+            var ok  = works.filter(function(w) { return w.status === 'ok'; }).length;
+            var err = works.filter(function(w) { return w.status === 'error'; }).length;
+            document.getElementById('geocodeText').textContent = '변환 완료';
+            document.getElementById('mapInstructions').innerHTML =
+                '📍 <kbd>' + ok + '건</kbd> 표시됨' + (err > 0 ? ' · 실패 ' + err + '건' : '');
+            if (ok > 0) fitAllBounds();
+            renderWorkList();
+            return;
+        }
+
+        var w = works[index];
+        naver.maps.Service.geocode({ query: w.address }, function(status, response) {
+            if (
+                status === naver.maps.Service.Status.OK &&
+                response.v2 && response.v2.addresses && response.v2.addresses.length > 0
+            ) {
+                var item = response.v2.addresses[0];
+                w.lat    = parseFloat(item.y);
+                w.lng    = parseFloat(item.x);
+                w.status = 'ok';
+                addMarker(w);
+            } else {
+                w.status = 'error';
+            }
+
+            updateProgress();
+            updateStats();
+            updateCardStatus(w);
+            setTimeout(function() { geocodeNext(index + 1); }, 120);
+        });
+    }
+
+    function updateProgress() {
+        var done  = works.filter(function(w) { return w.status !== 'pending'; }).length;
+        var total = works.length;
+        var pct   = total > 0 ? Math.round(done / total * 100) : 0;
+        document.getElementById('geocodeBarFill').style.width = pct + '%';
+        document.getElementById('geocodeText').textContent    = '주소 변환 중...';
+        document.getElementById('geocodeCount').textContent   = done + ' / ' + total;
+    }
+
+    // ─── 마커 추가 ───
+    function addMarker(w) {
+        if (!mapReady) return;
+
+        var pos = new naver.maps.LatLng(w.lat, w.lng);
+
+        var marker = new naver.maps.Marker({
+            position: pos,
+            map: map,
+            icon: {
+                content: '<div style="width:14px;height:14px;border-radius:50%;' +
+                    'background:' + w.color + ';border:3px solid #fff;' +
+                    'box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"></div>',
+                anchor: new naver.maps.Point(7, 7)
+            },
+            zIndex: 100
+        });
+
+        var labelMarker = new naver.maps.Marker({
+            position: pos,
+            map: labelsVisible ? map : null,
+            icon: {
+                content: '<div style="background:rgba(15,25,35,0.9);color:#fff;' +
+                    'padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;' +
+                    'font-family:Noto Sans KR,sans-serif;white-space:nowrap;' +
+                    'border:1px solid ' + w.color + ';box-shadow:0 1px 4px rgba(0,0,0,0.3);' +
+                    'margin-top:18px;">' + escHtml(w.id) + '</div>',
+                anchor: new naver.maps.Point(15, -2)
+            },
+            zIndex: 50
+        });
+
+        var infoWindow = new naver.maps.InfoWindow({
+            content:      buildInfoHtml(w),
+            borderColor:  w.color,
+            borderWidth:  2,
+            anchorSize:   new naver.maps.Size(10, 10),
+            pixelOffset:  new naver.maps.Point(0, -5)
+        });
+
+        naver.maps.Event.addListener(marker, 'click', function() {
+            if (currentOpenInfo === infoWindow) {
+                infoWindow.close();
+                currentOpenInfo = null;
+            } else {
+                if (currentOpenInfo) currentOpenInfo.close();
+                infoWindow.open(map, marker);
+                currentOpenInfo = infoWindow;
+            }
+        });
+
+        w._marker      = marker;
+        w._infoWindow  = infoWindow;
+        w._labelMarker = labelMarker;
+        mapMarkers.push(marker);
+        mapInfoWindows.push(infoWindow);
+        mapLabels.push(labelMarker);
+    }
+
+    // ─── InfoWindow 내용 (엑셀 행 전체) ───
+    function buildInfoHtml(w) {
+        var rows = Object.keys(w.allData).map(function(key) {
+            var val = w.allData[key];
+            if (val === null || val === undefined || val === '') val = '-';
+            return '<tr>' +
+                '<td style="color:#777;font-size:11px;font-weight:600;padding:4px 12px 4px 0;' +
+                    'white-space:nowrap;vertical-align:top;border-bottom:1px solid #f0f0f0;">' +
+                    escHtml(String(key)) + '</td>' +
+                '<td style="color:#222;font-size:12px;padding:4px 0;vertical-align:top;' +
+                    'border-bottom:1px solid #f0f0f0;word-break:break-all;">' +
+                    escHtml(String(val)) + '</td>' +
+                '</tr>';
+        }).join('');
+
+        return '<div style="font-family:Noto Sans KR,sans-serif;min-width:250px;max-width:340px;">' +
+            '<div style="background:' + w.color + '22;padding:10px 14px;' +
+                'border-bottom:2px solid ' + w.color + ';font-size:12px;font-weight:700;color:#1a1a1a;">' +
+                '📍 ' + escHtml(w.address) + '</div>' +
+            '<div style="padding:8px 14px 12px;max-height:320px;overflow-y:auto;">' +
+                '<table style="width:100%;border-collapse:collapse;">' + rows + '</table>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function escHtml(s) {
+        return String(s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ─── 사이드바 목록 ───
+    function renderWorkList(filter) {
+        filter = (filter || '').toLowerCase();
+        var list     = document.getElementById('workList');
+        var filtered = works.filter(function(w) {
+            if (!filter) return true;
+            if (w.address.toLowerCase().indexOf(filter) !== -1) return true;
+            return Object.values(w.allData).join(' ').toLowerCase().indexOf(filter) !== -1;
+        });
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="icon">' +
+                (filter ? '🔍' : '📋') + '</div>' +
+                (filter ? '검색 결과가 없습니다' : '엑셀 파일을 업로드하면<br>주소가 지도에 표시됩니다') +
+                '</div>';
+            return;
+        }
+
+        list.innerHTML = filtered.map(function(w) {
+            var lblMap   = { ok:'표시됨', error:'실패', pending:'변환 중' };
+            var clsMap   = { ok:'s-ok',  error:'s-error', pending:'s-pending' };
+            return '<div class="work-card" id="card-' + w.idx + '" onclick="focusWork(' + w.idx + ')">' +
+                '<div class="card-header">' +
+                    '<span class="color-dot" style="background:' + w.color + ';"></span>' +
+                    '<span class="card-id">' + escHtml(w.id) + '</span>' +
+                    '<span class="card-status ' + clsMap[w.status] + '">' + lblMap[w.status] + '</span>' +
+                '</div>' +
+                '<div class="card-addr">' + escHtml(w.address) + '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    function updateCardStatus(w) {
+        var card = document.getElementById('card-' + w.idx);
+        if (!card) return;
+        var lblMap = { ok:'표시됨', error:'실패', pending:'변환 중' };
+        var clsMap = { ok:'s-ok',  error:'s-error', pending:'s-pending' };
+        var badge  = card.querySelector('.card-status');
+        badge.textContent = lblMap[w.status];
+        badge.className   = 'card-status ' + clsMap[w.status];
+    }
+
+    function updateStats() {
+        var ok  = works.filter(function(w) { return w.status === 'ok'; }).length;
+        var err = works.filter(function(w) { return w.status === 'error'; }).length;
+        document.getElementById('totalCount').textContent = works.length;
+        document.getElementById('okCount').textContent   = ok;
+        document.getElementById('errCount').textContent  = err;
+    }
+
+    // ─── 상호작용 ───
+    function focusWork(idx) {
+        if (!mapReady) return;
+        var w = works.find(function(x) { return x.idx === idx; });
+        if (!w || w.status !== 'ok') return;
+        map.setCenter(new naver.maps.LatLng(w.lat, w.lng));
+        map.setZoom(16);
+        if (currentOpenInfo) currentOpenInfo.close();
+        w._infoWindow.open(map, w._marker);
+        currentOpenInfo = w._infoWindow;
+    }
+
+    function fitAllBounds() {
+        if (!mapReady) return;
+        var visible = works.filter(function(w) { return w.status === 'ok'; });
+        if (visible.length === 0) return;
+        var bounds = new naver.maps.LatLngBounds();
+        visible.forEach(function(w) { bounds.extend(new naver.maps.LatLng(w.lat, w.lng)); });
+        map.fitBounds(bounds, { top:60, right:60, bottom:60, left:60 });
+    }
+
+    function toggleLabels() {
+        labelsVisible = !labelsVisible;
+        mapLabels.forEach(function(l) { l.setMap(labelsVisible ? map : null); });
+        document.getElementById('labelToggle').textContent =
+            labelsVisible ? '🏷️ 라벨 숨기기' : '🏷️ 라벨 보기';
+    }
+
+    function filterWorks() {
+        renderWorkList(document.getElementById('searchInput').value);
+    }
+
+    function clearMapElements() {
+        mapMarkers.forEach(function(m) { m.setMap(null); });
+        mapInfoWindows.forEach(function(iw) { try { iw.close(); } catch(e){} });
+        mapLabels.forEach(function(l) { l.setMap(null); });
+        mapMarkers = []; mapInfoWindows = []; mapLabels = [];
+        currentOpenInfo = null;
+    }
+
+    function clearData() {
+        works = [];
+        geocodingInProgress = false;
+        clearMapElements();
+        document.getElementById('fileInfo').classList.remove('show');
+        document.getElementById('excelFile').value = '';
+        document.getElementById('colDetect').classList.remove('show');
+        document.getElementById('geocodeWrap').classList.remove('show');
+        document.getElementById('geocodeBarFill').style.width = '0%';
+        document.getElementById('mapInstructions').innerHTML =
+            '<kbd>엑셀</kbd> 파일을 업로드하면 주소가 자동으로 지도에 표시됩니다';
+        renderWorkList();
+        updateStats();
+    }
+</script>
+</body>
+</html>
